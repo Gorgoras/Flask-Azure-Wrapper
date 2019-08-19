@@ -4,11 +4,6 @@
 To run this. simply clone the repo and run
 	
 	cd C:/path/to/clonedRepo
+	pip install -r requirements.txt
 	SET FLASK_APP=mainPage.py
 	flask run
-	
-If an error shows up, you may need to install flask
-
-	pip install flask
-	
-Hope this helps!

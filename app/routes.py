@@ -1,8 +1,9 @@
 from flask import render_template, flash, redirect, session, request
 from flask_login import current_user, login_user
 from app import app
-from app.forms import LoginForm, CreateResGroupForm
+from app.forms import LoginForm, CreateResGroupForm, CreateSqlServerForm
 import azure.common.credentials as cred
+from azure.mgmt.sql import SqlManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 
 @app.route('/')
@@ -77,7 +78,7 @@ def createResourceGroup():
             flash("Cannot create resource group with those settings" + errorMessage)
     return redirect('/index')
 
-@app.route('/createsqlserver')
+@app.route('/createsqlserver', methods=['GET', 'POST'])
 def createSqlServer():
     if request.method == 'GET':
         try:
@@ -85,7 +86,48 @@ def createSqlServer():
         except:
             logged = 'F'
         if logged == 'T':
-            #Logic to create Sql Server
+            form = CreateSqlServerForm()
+            return render_template('sqlserver.html', title='Create Sql Server', form=form)
         else:
             flash("You must login before creating resources!!")
             return redirect('/index')
+    else:
+        try:
+            form = CreateSqlServerForm()
+            credentials = cred.UserPassCredentials(session['user'], session['pasw'], verify=True)
+            subsID = form.subscriptionID.data
+            RGName = form.rg_name.data
+            location = form.region.data
+            sql_svname = form.sql_svname.data
+            sql_dbname = form.sql_dbname.data
+            dbuser = form.admin_user.data
+            dbpass = form.admin_pass.data
+
+            sql_client = SqlManagementClient(credentials=credentials, subscription_id=subsID)
+            sql_client.servers.create_or_update(
+                    RGName,
+                    sql_svname,
+                    {
+                        'location': location,
+                        'version': '12.0',  # Required for create
+                        'administrator_login': dbuser,  # Required for create
+                        'administrator_login_password': dbpass  # Required for create
+                    }
+                )
+            async_db_create = sql_client.databases.create_or_update(
+                    RGName,
+                    sql_svname,
+                    sql_dbname,
+                    {
+                        'location': location
+                    }
+                )
+            async_db_create.result()
+            flash("Sql Server created successfully")
+            return redirect('/index')
+        except Exception as ex:
+            errorMessage = repr(ex)
+            flash("Cannot create sql server with those settings. " + errorMessage)
+    return redirect('/index')
+
+

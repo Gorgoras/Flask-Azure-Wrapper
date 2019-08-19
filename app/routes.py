@@ -130,4 +130,14 @@ def createSqlServer():
             flash("Cannot create sql server with those settings. " + errorMessage)
     return redirect('/index')
 
-
+@app.route('/createresources')
+def createResources():
+    try:
+        logged = session['loggedIn']
+    except:
+        logged = 'F'
+    if logged == 'T':
+        return render_template('createresources.html', title='Create Resources')
+    else:
+        flash("You must login before creating resources!!")
+        return redirect('/index')

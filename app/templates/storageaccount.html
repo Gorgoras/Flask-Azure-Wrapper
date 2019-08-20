@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block app_content %}
+    <h1>Create a Storage Account</h1>
+    <form action="" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.rg_name.label }}<br>
+            {{ form.rg_name(size=32) }}
+        </p>
+        <p>
+            {{ form.subscriptionID.label }}<br>
+            {{ form.subscriptionID(size=100) }}
+        </p>
+        <p>
+            {{ form.region.label }}<br>
+            {{ form.region }}
+        </p>
+        <p>
+            {{ form.storageName.label }}<br>
+            {{ form.storageName }}
+        </p>
+        <p>{{ form.submit() }}</p>
+    </form>
+{% endblock %}

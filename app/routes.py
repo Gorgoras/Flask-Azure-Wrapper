@@ -1,10 +1,14 @@
 from flask import render_template, flash, redirect, session, request
 from flask_login import current_user, login_user
 from app import app
-from app.forms import LoginForm, CreateResGroupForm, CreateSqlServerForm
+from app.forms import LoginForm, CreateResGroupForm, CreateSqlServerForm, CreateStorageAccountForm
 import azure.common.credentials as cred
 from azure.mgmt.sql import SqlManagementClient
 from azure.mgmt.resource import ResourceManagementClient
+from azure.mgmt.storage import StorageManagementClient as blobacc
+from azure.mgmt.storage.models import StorageAccountCreateParameters as blob_model
+from azure.mgmt.storage.models import (Sku, SkuName, Kind)
+
 
 @app.route('/')
 @app.route('/index')
@@ -141,3 +145,40 @@ def createResources():
     else:
         flash("You must login before creating resources!!")
         return redirect('/index')
+
+@app.route('/createstorageaccount', methods=['GET', 'POST'])
+def createStorageAccount():
+    if request.method == 'GET':
+        try:
+            logged = session['loggedIn']
+        except:
+            logged = 'F'
+        if logged == 'T':
+            form = CreateStorageAccountForm()
+            return render_template('sqlserver.html', title='Create Sql Server', form=form)
+        else:
+            flash("You must login before creating resources!!")
+            return redirect('/index')
+    else:
+        try:
+            form = CreateStorageAccountForm()
+            credentials = cred.UserPassCredentials(session['user'], session['pasw'], verify=True)
+            subsID = form.subscriptionID.data
+            RGName = form.rg_name.data
+            location = form.region.data
+            storageName = form.storageName.data
+            storage_client = blobacc(credentials,subsID)
+            availability = storage_client.storage_accounts.check_name_availability(storageName)
+            if availability.name_available:
+                storage_client.storage_accounts.create(RGName, storageName, blob_model(sku=Sku(name=SkuName.standard_ragrs),
+                        kind=Kind.storage,
+                        location=location))
+            else:
+                flash("Name not available!")
+                return redirect('/index')
+            flash("Storage Account created successfully")
+            return redirect('/index')
+        except Exception as ex:
+            errorMessage = repr(ex)
+            flash("Cannot create storage account with those settings. " + errorMessage)
+    return redirect('/index')

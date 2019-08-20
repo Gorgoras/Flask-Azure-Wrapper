@@ -1,7 +1,7 @@
 from flask import render_template, flash, redirect, session, request
 from flask_login import current_user, login_user
 from app import app
-from app.forms import LoginForm, CreateResGroupForm, CreateSqlServerForm, CreateStorageAccountForm
+from app.forms import LoginForm, CreateResGroupForm, CreateSqlServerForm, CreateStorageAccountForm, CreateDataFactoryForm
 import azure.common.credentials as cred
 import azure.mgmt.subscription as subs
 from azure.mgmt.sql import SqlManagementClient
@@ -9,6 +9,8 @@ from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.storage import StorageManagementClient as blobacc
 from azure.mgmt.storage.models import StorageAccountCreateParameters as blob_model
 from azure.mgmt.storage.models import (Sku, SkuName, Kind)
+from azure.mgmt.datafactory import DataFactoryManagementClient as adf
+from azure.mgmt.datafactory.models import Factory as adf_model
 
 @app.route('/')
 @app.route('/index')
@@ -175,13 +177,23 @@ def createStorageAccount():
             logged = 'F'
         if logged == 'T':
             form = CreateStorageAccountForm()
-            return render_template('sqlserver.html', title='Create Sql Server', form=form)
+            user = session['user']
+            pasw = session['pasw']
+            credentials = cred.UserPassCredentials(user, pasw, verify=True)
+            resource_client = ResourceManagementClient(credentials, session['subscription_id'])
+            resGroups = []
+            for resC in resource_client.resource_groups.list():
+                resGroups.append((resC.as_dict()['name'], resC.as_dict()['name']))
+            form.rg_name.choices = resGroups
+            form.subscriptionID.data = session['subscription_id']
+            return render_template('storageaccount.html', title='Create Storage Account', form=form)
         else:
             flash("You must login before creating resources!!")
             return redirect('/index')
     else:
         try:
             form = CreateStorageAccountForm()
+            
             credentials = cred.UserPassCredentials(session['user'], session['pasw'], verify=True)
             subsID = form.subscriptionID.data
             RGName = form.rg_name.data
@@ -201,4 +213,44 @@ def createStorageAccount():
         except Exception as ex:
             errorMessage = repr(ex)
             flash("Cannot create storage account with those settings. " + errorMessage)
+    return redirect('/index')
+
+@app.route('/createdatafactory', methods=['GET', 'POST'])
+def createDataFactory():
+    if request.method == 'GET':
+        try:
+            logged = session['loggedIn']
+        except:
+            logged = 'F'
+        if logged == 'T':
+            form = CreateDataFactoryForm()
+            user = session['user']
+            pasw = session['pasw']
+            credentials = cred.UserPassCredentials(user, pasw, verify=True)
+            resource_client = ResourceManagementClient(credentials, session['subscription_id'])
+            resGroups = []
+            for resC in resource_client.resource_groups.list():
+                resGroups.append((resC.as_dict()['name'], resC.as_dict()['name']))
+            form.rg_name.choices = resGroups
+            form.subscriptionID.data = session['subscription_id']
+            return render_template('datafactory.html', title='Create Data Factory', form=form)
+        else:
+            flash("You must login before creating resources!!")
+            return redirect('/index')
+    else:
+        try:
+            form = CreateStorageAccountForm()
+            credentials = cred.UserPassCredentials(session['user'], session['pasw'], verify=True)
+            subsID = form.subscriptionID.data
+            RGName = form.rg_name.data
+            location = form.region.data
+            datafactoryName = form.datafactoryName.data
+            adf_client = adf(credentials, subsID)
+            model = adf_model(location=location)
+            adf_client.factories.create_or_update(resource_group_name=RGName, factory_name=datafactoryName, factory=model)
+            flash("Data Factory created successfully!!")
+            return redirect('/index')
+        except Exception as ex:
+            errorMessage = repr(ex)
+            flash("Cannot create data factory with those settings. " + errorMessage)
     return redirect('/index')

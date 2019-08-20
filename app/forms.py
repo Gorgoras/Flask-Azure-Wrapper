@@ -48,7 +48,7 @@ class CreateResGroupForm(FlaskForm):
     submit = SubmitField('Create Resource Group!')
 
 class CreateSqlServerForm(FlaskForm):
-    rg_name = StringField('Resource Group Name')
+    rg_name = SelectField('Resource Group Name')
     subscriptionID = StringField('SubscriptionId')
     sql_svname = StringField('Sql Server Name')
     admin_user = StringField('Admin Username')

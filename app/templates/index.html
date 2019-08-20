@@ -4,4 +4,10 @@
 {% block app_content %}
     <h1>Hi, {{ user.username }}!</h1>
 
+    {% if subscription %}
+    <div>
+        Your subscription id is: {{ subscription.subs_id }}
+    </div>
+
+    {% endif %}
 {% endblock %}

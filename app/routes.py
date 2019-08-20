@@ -3,12 +3,12 @@ from flask_login import current_user, login_user
 from app import app
 from app.forms import LoginForm, CreateResGroupForm, CreateSqlServerForm, CreateStorageAccountForm
 import azure.common.credentials as cred
+import azure.mgmt.subscription as subs
 from azure.mgmt.sql import SqlManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.storage import StorageManagementClient as blobacc
 from azure.mgmt.storage.models import StorageAccountCreateParameters as blob_model
 from azure.mgmt.storage.models import (Sku, SkuName, Kind)
-
 
 @app.route('/')
 @app.route('/index')
@@ -18,7 +18,9 @@ def index():
     except:
         logged = 'F'
     if logged == 'T':
-        return render_template('index.html', title='Home', user={'username': session['user'] })
+        s = session['subscription_id']
+        subscription = {'subs_id': s}
+        return render_template('index.html', title='Home', user={'username': session['user'] }, subscription = subscription)
 
     return render_template('index.html', title='Home', user={'username': 'Random User' })
 
@@ -34,10 +36,18 @@ def login():
             user = form.username.data
             pasw = form.password.data
             try:
-                cred.UserPassCredentials(user, pasw, verify=True)
+                credentials = cred.UserPassCredentials(user, pasw, verify=True)
                 session['user'] = user
                 session['pasw'] = pasw
                 session['loggedIn'] = 'T'
+                #Get subscriptions
+                su = subs.SubscriptionClient(credentials=credentials)
+                subsList = [sub.as_dict() for sub in su.subscriptions.list()]
+                session['subscription_id'] = subsList[0]['subscription_id']
+                #Get resource groups
+                #resource_client = ResourceManagementClient(credentials, session['subscription_id'])
+                #resGroups = [resC.as_dict()['name'] for resC in resource_client.resource_groups.list()]
+                #session['resource_groups'] = resGroups
                 return redirect('/index')
             except Exception:
                 flash('Login failed for user {}.'.format(
@@ -62,6 +72,7 @@ def createResourceGroup():
             logged = 'F'
         if logged == 'T':
             form = CreateResGroupForm()
+            form.subscriptionID.data = session['subscription_id']
             return render_template('resourcegroup.html', title='Create Resource Group', form=form)
         else:
             flash("You must login before creating resources!!")
@@ -91,6 +102,15 @@ def createSqlServer():
             logged = 'F'
         if logged == 'T':
             form = CreateSqlServerForm()
+            user = session['user']
+            pasw = session['pasw']
+            credentials = cred.UserPassCredentials(user, pasw, verify=True)
+            resource_client = ResourceManagementClient(credentials, session['subscription_id'])
+            resGroups = []
+            for resC in resource_client.resource_groups.list():
+                resGroups.append((resC.as_dict()['name'], resC.as_dict()['name']))
+            form.rg_name.choices = resGroups
+            form.subscriptionID.data = session['subscription_id']
             return render_template('sqlserver.html', title='Create Sql Server', form=form)
         else:
             flash("You must login before creating resources!!")

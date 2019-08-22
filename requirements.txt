@@ -10,3 +10,4 @@ azure-mgmt-storage==2.0.0
 azure-mgmt-sql==0.9.1
 azure-mgmt-subscription==0.2.0
 azure-common==1.1.23
+gunicorn

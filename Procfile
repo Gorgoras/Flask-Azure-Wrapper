@@ -1,1 +1,1 @@
-web: gunicorn azurerct:app
+web: gunicorn mainPage:app

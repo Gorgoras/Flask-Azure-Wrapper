@@ -1,4 +1,4 @@
-#!/bin/sh
-# this script is used to boot a Docker container
-source venv/bin/activate
-exec gunicorn -b :5000 --access-logfile - --error-logfile - mainPage:app
+gunicorn -b 0.0.0.0:5000 mainPage:app
+#!/bin/bash
+#-b 0.0.0.0:5000 mainPage:app
+#exec gunicorn
